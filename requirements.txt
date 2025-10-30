@@ -1,0 +1,6 @@
+ftfy==6.1.1
+regex
+tqdm
+timm
+setuptools==59.5.0
+matplotlib
