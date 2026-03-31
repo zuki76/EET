@@ -9,6 +9,17 @@ Official implementation of EET: Expertise-Encoding Tuning for Domain-Specialized
 Few-shot transfer learning with vision-language models (VLMs) is a challenging task, particularly when adapting to domains with significant distribution shifts (e.g., from natural images to remote sensing or medical imaging). Most recent works incorporate domain-specific models to guide the learnable embedded prompts, which can only achieve minor adaptations due to restricted tuning in VLMs and limited knowledge extracted from the final layers of architecture-constrained domain models, and thus deliver suboptimal performance. To address these issues, we propose Expertise-Encoding Tuning (EET), a novel approach that encodes multi-layer expertise from a domain-specific model of any architecture into a set of domain adaptive tuning parameters for all layers of VLMs. The framework introduces Hierarchical Knowledge Summarization (HKS), which integrates domain-relevant features into a comprehensive expertise knowledge. The domain knowledge then guides a knowledge-based parameter generator to produce domain adaptive tuning parameters for each attention module in the VLMs. This facilitates fine-grained feature adaptation across the entire network, thereby preserving generalization, mitigating overfitting risks, and establishing strong transfer learning capability, particularly in scenarios with large domain shifts. Extensive experiments on remote sensing and medical imaging demonstrate that our method consistently outperforms state-of-the-art approaches.
 
 
+## Contributions
+- We propose a novel VLM tuning method that reformulates few-shot transfer learning as a knowledge-driven parameter generation task rather than naive prompt learning, enabling effective adaptation to specific domains with limited data.
+- We design the Hierarchical Knowledge Summarization module to systematically capture domain knowledge from all layers and enhance transfer learning performance.
+- To the best of our knowledge, we are the first to introduce the Knowledge-Based Parameter Generator. This module encodes summarized domain knowledge into adaptive tuning parameters for all VLM layers, facilitating transfer learning with significant domain shifts.
+- Extensive experiments across various datasets in remote sensing and medical imaging demonstrate that our approach effectively transfers domain knowledge into VLMs and outperforms state-of-the-art methods.
+
+## Framework
+![teaser](./figs/framework.png)
+
+Overview of our proposed Expertise-Encoding Tuning (EET) framework. EET leverages a domain-specific model to generate adaptive tuning parameters for each MHSA block within CLIP's vision and language branches. This strategy facilitates a deep, layer-by-layer transfer of domain expertise. The EET framework consists of two core components: a Hierarchical Knowledge Summarization (HKS) module that integrates multi-layer domain knowledge, and a Knowledge-Based Parameter Generator that encodes this expertise into the domain adaptive tuning parameters. $EET_i^*$ denotes the EET module, and $A_i^*$ represents the generated adaptive tuning matrix $A$ for the $i$-th MHSA block. The superscript $*\in\{v,l\}$ specifies the branch: vision ($v$) or language ($l$).
+
 ---
 ## Install
 ```bash
