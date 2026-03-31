@@ -18,7 +18,7 @@ Few-shot transfer learning with vision-language models (VLMs) is a challenging t
 ## Framework
 ![teaser](./figs/framework.png)
 
-Overview of our proposed Expertise-Encoding Tuning (EET) framework. EET leverages a domain-specific model to generate adaptive tuning parameters for each MHSA block within CLIP's vision and language branches. This strategy facilitates a deep, layer-by-layer transfer of domain expertise. The EET framework consists of two core components: a Hierarchical Knowledge Summarization (HKS) module that integrates multi-layer domain knowledge, and a Knowledge-Based Parameter Generator that encodes this expertise into the domain adaptive tuning parameters. $EET_i^*$ denotes the EET module, and $A_i^*$ represents the generated adaptive tuning matrix $A$ for the $i$-th MHSA block. The superscript $*\in\{v,l\}$ specifies the branch: vision ($v$) or language ($l$).
+Overview of our proposed Expertise-Encoding Tuning (EET) framework. EET leverages a domain-specific model to generate adaptive tuning parameters for each MHSA block within CLIP's vision and language branches. This strategy facilitates a deep, layer-by-layer transfer of domain expertise. The EET framework consists of two core components: a Hierarchical Knowledge Summarization (HKS) module that integrates multi-layer domain knowledge, and a Knowledge-Based Parameter Generator that encodes this expertise into the domain adaptive tuning parameters. $EET_i^{\*}$ denotes the EET module, and $A_i^{\*}$ represents the generated adaptive tuning matrix $A$ for the $i$-th MHSA block. The superscript $*\in\{v,l\}$ specifies the branch: vision ($v$) or language ($l$).
 
 ---
 ## Install
