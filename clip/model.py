@@ -257,6 +257,11 @@ class EET_transformer_LoRAGenerater(nn.Module):
         output: [(A, B),...] A's shape: [batch_size, dim, r]
                                    B's shape: [1, dim, r]
         """
+        if img_feature.ndim != 4 or img_feature.shape[2] != self.pos_embed.shape[1]:
+            raise ValueError(
+                f"Expert features must have shape [batch, levels, {self.pos_embed.shape[1]}, channels]; "
+                f"got {tuple(img_feature.shape)}. Use a retrained checkpoint matching this expert."
+            )
         img_feature = self.visual_proj(img_feature) + self.pos_embed
         weights = self.gen(img_feature)  # [batch_size, llm_depth, dim*lora_rank]
         weights = weights.reshape(weights.shape[0], self.llm_depth//self.skip_layers, self.dim, self.lora_rank)
@@ -982,35 +987,38 @@ class Transformer_EET_transformer(nn.Module):
 
         assert current_trainer == "EET_RS_ViT" or current_trainer == "EET_RS_ViTAE" or current_trainer == "EET_Med_ViT"
         self.lora_rank = 16
+        expert_pos_num = design_details["expert_pos_num"]
+        if not isinstance(expert_pos_num, int) or expert_pos_num <= 0:
+            raise ValueError("expert_pos_num must be a positive integer")
 
         if text_layer:
             self.LG_dim = 512
-            self.DMPW_LoRAGenerater_1 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1) # 12*512*512
-            self.DMPW_LoRAGenerater_2 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_3 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_4 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_5 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_6 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_7 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_8 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_9 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_10 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_11 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_12 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
+            self.DMPW_LoRAGenerater_1 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num) # 12*512*512
+            self.DMPW_LoRAGenerater_2 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_3 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_4 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_5 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_6 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_7 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_8 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_9 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_10 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_11 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_12 = EET_transformer_LoRAGenerater(dim=512, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
         else:
             self.LG_dim = 768
-            self.DMPW_LoRAGenerater_1 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1) # 12*768*768
-            self.DMPW_LoRAGenerater_2 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_3 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_4 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_5 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_6 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_7 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_8 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_9 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_10 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_11 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
-            self.DMPW_LoRAGenerater_12 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1)
+            self.DMPW_LoRAGenerater_1 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num) # 12*768*768
+            self.DMPW_LoRAGenerater_2 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_3 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_4 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_5 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_6 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_7 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_8 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_9 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_10 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_11 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
+            self.DMPW_LoRAGenerater_12 = EET_transformer_LoRAGenerater(dim=768, N=1, skip_layers=1, lora_rank=self.lora_rank, length=1, llm_depth=1, pos_num=expert_pos_num)
         
         self.Bs_no_grad = nn.Parameter(0.02*torch.randn(1, 12//1, self.LG_dim*self.lora_rank, dtype=torch.float16), requires_grad=False)
         
