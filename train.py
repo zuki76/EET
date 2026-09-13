@@ -128,6 +128,8 @@ def extend_cfg(cfg):
     """
     from yacs.config import CfgNode as CN
 
+    cfg.MODEL.EXPERT_CHECKPOINT = ""
+
     cfg.TRAINER.COOP = CN()
     cfg.TRAINER.COOP.N_CTX = 16  # number of context vectors
     cfg.TRAINER.COOP.CSC = False  # class-specific context

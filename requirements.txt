@@ -1,6 +1,6 @@
 ftfy==6.1.1
 regex
 tqdm
-timm
+timm==0.6.13
 setuptools==59.5.0
 matplotlib
