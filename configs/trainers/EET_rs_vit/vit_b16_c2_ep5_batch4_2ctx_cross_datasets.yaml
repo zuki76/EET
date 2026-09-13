@@ -37,7 +37,7 @@ MODEL:
     NAME: "ViT-B/16"
 
 TRAINER:
-  DMPW_v8:
+  EET_RS_ViT:
     N_CTX: 2
     CTX_INIT: "a photo of a"
     PREC: "fp16"
