@@ -4,8 +4,6 @@ import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 import os
 
-import torchvision
-torchvision.models.resnext50_32x4d()
 
 __model_file = {
     18: 'https://download.pytorch.org/models/resnet18-5c106cde.pth',

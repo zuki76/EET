@@ -16,7 +16,7 @@ import torch.nn as nn
 
 from timm.models.vision_transformer import PatchEmbed, Block
 
-from domain_model.code.pos_embed import get_2d_sincos_pos_embed
+from domain_model_rs.code.pos_embed import get_2d_sincos_pos_embed
 
 
 class MaskedAutoencoderViT(nn.Module):
@@ -127,6 +127,11 @@ class MaskedAutoencoderViT(nn.Module):
         x: [N, L, D], sequence
         """
         N, L, D = x.shape  # batch, length, dim
+        if not 0.0 <= mask_ratio < 1.0:
+            raise ValueError(f"Invalid mask_ratio: {mask_ratio}")
+        if mask_ratio == 0.0:
+            ids_restore = torch.arange(L, device=x.device).unsqueeze(0).expand(N, -1)
+            return x, x.new_zeros((N, L)), ids_restore
         len_keep = int(L * (1 - mask_ratio)) # the remained token number
         
         noise = torch.rand(N, L, device=x.device)  # noise in [0, 1]
