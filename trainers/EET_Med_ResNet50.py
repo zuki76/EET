@@ -9,10 +9,13 @@ from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 from dassl.engine import TRAINER_REGISTRY, TrainerX
 from dassl.metrics import compute_accuracy
-from dassl.utils import load_pretrained_weights, load_checkpoint
-from dassl.optim import build_optimizer, build_lr_scheduler
+from dassl.utils import load_checkpoint
+from dassl.optim import build_lr_scheduler
 import numpy as np
-from collections import defaultdict, OrderedDict
+from trainers.eet_utils import (
+    FrozenExpertModel, configure_trainable_parameters, build_eet_optimizer,
+    load_eet_weights,
+)
 from clip import clip
 from clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
 
@@ -183,7 +186,7 @@ class MultiModalPromptLearner(nn.Module):
         return prompts, self.proj(self.ctx), self.compound_prompts_text, visual_deep_prompts   # pass here original, as for visual 768 is required
 
 
-class CustomCLIP(nn.Module):
+class CustomCLIP(FrozenExpertModel):
     def __init__(self, cfg, classnames, clip_model):
         super().__init__()
         self.prompt_learner = MultiModalPromptLearner(cfg, classnames, clip_model)
@@ -194,14 +197,14 @@ class CustomCLIP(nn.Module):
         self.dtype = clip_model.dtype
     
 
-        ckpt_path = "ROOT_TO_CKPT/resnet_50_23dataset.pth"
+        ckpt_path = cfg.MODEL.EXPERT_CHECKPOINT or "ROOT_TO_CKPT/resnet_50_23dataset.pth"
         self.domain_model = ResNetFeatures(
             model_name="resnet50",
             pretrained=False,  # avoid internet connection
             spatial_dims=3,
             in_channels=1
         )
-        checkpoint = torch.load(ckpt_path)
+        checkpoint = torch.load(ckpt_path, map_location="cpu")
         state_dict = checkpoint['state_dict']
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
@@ -266,70 +269,13 @@ class EET_Med_ResNet50(TrainerX):
         print("Building custom CLIP")
         self.model = CustomCLIP(cfg, classnames, clip_model)
 
-        print("Turning off gradients in both the image and the text encoder")
-        name_to_update = "prompt_learner"
-
-        for name, param in self.model.named_parameters():
-            if name_to_update not in name:
-                # Make sure that VPT prompts are updated
-                if "VPT" in name or "EET" in name or "eet" in name:
-                    param.requires_grad_(True)
-                else:
-                    param.requires_grad_(False)
-            if "no_grad" in name:
-                param.requires_grad_(False)
-        
-        # Double check
-        learnable_params = [(name, param) for name, param in self.model.named_parameters() if param.requires_grad]
-
+        configure_trainable_parameters(self.model)
         if cfg.MODEL.INIT_WEIGHTS:
-            load_pretrained_weights(self.model, cfg.MODEL.INIT_WEIGHTS)
+            checkpoint = load_checkpoint(cfg.MODEL.INIT_WEIGHTS)
+            load_eet_weights(self.model, checkpoint["state_dict"])
 
         self.model.to(self.device)
-
-        print("#"*50)
-        print("Building optimizer with different param groups...")
-        param_groups = defaultdict(list)
-        group_keywords = [group['NAME'] for group in cfg.OPTIM.PARAM_GROUPS]
-        for name, param in learnable_params:
-            matched = False
-            for keyword in group_keywords:
-                if keyword in name:
-                    param_groups[keyword].append(param)
-                    matched = True
-                    break
-            if not matched:
-                print(f"Warning: parameter '{name}' did not match any group keyword, adding to the first group '{group_keywords[0]}'.")
-                param_groups[group_keywords[0]].append(param)
-
-        optimizer_param_groups = []
-        for group_cfg in cfg.OPTIM.PARAM_GROUPS:
-            group_name = group_cfg['NAME']
-            if param_groups[group_name]:
-                group_dict = {
-                    'params': param_groups[group_name],
-                    'lr': group_cfg['LR'],
-                }
-                if hasattr(group_cfg, 'WEIGHT_DECAY'):
-                    group_dict['weight_decay'] = group_cfg['WEIGHT_DECAY']
-                if hasattr(group_cfg, 'MOMENTUM'):
-                    group_dict['momentum'] = group_cfg['MOMENTUM']
-                
-                optimizer_param_groups.append(group_dict)
-                print(f"Param group '{group_name}': {len(param_groups[group_name])} params, LR={group_cfg['LR']}")
-            else:
-                print(f"Warning: No parameters found for group '{group_name}'. Skipping.")
-
-        optimizer_name = cfg.OPTIM.NAME.lower()
-        if optimizer_name == "sgd":
-            self.optim = torch.optim.SGD(optimizer_param_groups, momentum=cfg.OPTIM.get("MOMENTUM", 0.9), weight_decay=cfg.OPTIM.get("WEIGHT_DECAY", 5e-4))
-        elif optimizer_name == "adamw":
-            self.optim = torch.optim.AdamW(optimizer_param_groups, weight_decay=cfg.OPTIM.get("WEIGHT_DECAY", 5e-4))
-        else:
-            raise ValueError(f"Optimizer {optimizer_name} not supported for manual group creation.")
-        print("#"*50)
-        # NOTE: only give prompt_learner to the optimizer
-        # self.optim = build_optimizer(self.model, cfg.OPTIM)
+        self.optim = build_eet_optimizer(self.model, cfg.OPTIM)
         self.sched = build_lr_scheduler(self.optim, cfg.OPTIM)
         self.register_model("MultiModalPromptLearner", self.model, self.optim, self.sched)
 
@@ -409,4 +355,4 @@ class EET_Med_ResNet50(TrainerX):
 
             print("Loading weights to {} " 'from "{}" (epoch = {})'.format(name, model_path, epoch))
             # set strict=False
-            self._models[name].load_state_dict(state_dict, strict=False)
+            load_eet_weights(self._models[name], state_dict)
